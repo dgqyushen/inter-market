@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { KLineChart, type KLineData } from './KLineChart'
-import { analyzeKLineWithAIStream, isAIConfigured } from '../services/aiAnalysisService'
+import { analyzeKLineWithAIStream } from '../services/aiAnalysisService'
 import './ChartModal.css'
 
 export type TimeInterval = '1d' | '1wk' | '1mo'
@@ -10,6 +10,7 @@ interface ChartModalProps {
   isOpen: boolean
   onClose: () => void
   symbol: string
+  displayName?: string
   data: KLineData[]
   loading?: boolean
   error?: string | null
@@ -27,6 +28,7 @@ export function ChartModal({
   isOpen,
   onClose,
   symbol,
+  displayName,
   data,
   loading = false,
   error = null,
@@ -197,7 +199,7 @@ export function ChartModal({
     )
   }
 
-  const aiConfigured = isAIConfigured()
+
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -206,7 +208,10 @@ export function ChartModal({
         onClick={e => e.stopPropagation()}
       >
         <div className="modal-header">
-          <h2 className="modal-title">{symbol} Ratio Trend</h2>
+          <h2 className="modal-title">
+            {displayName || symbol}
+            <span className="title-subtitle">比率趋势</span>
+          </h2>
           <div className="header-controls">
             <div className="interval-selector interval-buttons">
               {INTERVAL_OPTIONS.map(opt => (
@@ -233,10 +238,10 @@ export function ChartModal({
               ))}
             </select>
             <button
-              className={`ai-analyze-btn ${!aiConfigured ? 'disabled' : ''}`}
+              className="ai-analyze-btn"
               onClick={handleAIAnalysis}
-              disabled={loading || data.length === 0 || aiAnalyzing || !aiConfigured}
-              title={aiConfigured ? 'AI 智能分析' : '请先配置 AI API'}
+              disabled={loading || data.length === 0 || aiAnalyzing}
+              title="AI 智能分析"
             >
               {aiAnalyzing ? (
                 <>

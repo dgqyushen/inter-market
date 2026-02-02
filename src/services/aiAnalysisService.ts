@@ -136,10 +136,10 @@ export async function analyzeKLineWithAIStream(
   onComplete: (fullText: string) => void,
   onError: (error: string) => void
 ): Promise<void> {
-  if (!isAIConfigured()) {
-    onError('请先在 .env 文件中配置 AI API (VITE_AI_API_URL, VITE_AI_API_KEY)')
-    return
-  }
+  // if (!isAIConfigured()) {
+  //   onError('请先在 .env 文件中配置 AI API (VITE_AI_API_URL, VITE_AI_API_KEY)')
+  //   return
+  // }
 
   if (data.length === 0) {
     onError('无可用数据进行分析')
@@ -147,25 +147,43 @@ export async function analyzeKLineWithAIStream(
   }
 
   const { systemPrompt, userPrompt } = getPrompts(data, symbol, interval)
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt },
+  ]
 
   try {
-    const response = await fetch(AI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${AI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: AI_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 1500,
-        stream: true,
-      }),
-    })
+    let response: Response
+
+    // 优先检查是否有本地直连配置 (Local Dev)
+    if (isAIConfigured()) {
+      response = await fetch(AI_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${AI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: AI_MODEL,
+          messages,
+          temperature: 0.7,
+          max_tokens: 1500,
+          stream: true,
+        }),
+      })
+    } else {
+      // 否则回退到后端代理 (Production / Cloudflare Functions)
+      // 请求我们刚刚创建的 Function: /api/analyze
+      response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages,
+        }),
+      })
+    }
 
     if (!response.ok) {
       const errorText = await response.text()

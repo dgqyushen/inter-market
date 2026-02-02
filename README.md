@@ -36,7 +36,35 @@ npm install
 
 ### 3. 配置环境变量
 
-在根目录创建 `.env.local` 并配置必要的 API 密钥（参考 `.env.example`）。
+本项目支持 **本地开发** 和 **Cloudflare Pages 安全部署** 两种模式。
+
+#### 环境变量说明
+
+| 变量名 | 说明 | 本地配置 (.env) | 生产环境 (Cloudflare) |
+|--------|------|-----------------|---------------------|
+| `VITE_TRADING_PAIRS` | 美股交易对配置 (JSON) | ⚪ 可选 (有默认值) | ⚪ 可选 (有默认值) |
+| `VITE_CN_BENCHMARK_ETFS` | A股基准ETF配置 (JSON) | ⚪ 可选 (有默认值) | ⚪ 可选 (有默认值) |
+| `VITE_AI_API_URL` | AI API 接口地址 | ✅ 需要 | ❌ 不需要 |
+| `VITE_AI_MODEL` | AI 模型名称 | ✅ 需要 | ❌ 不需要 |
+| `VITE_AI_API_KEY` | **本地开发用** API Key | ✅ 可选 (调试用) | ❌ **禁止配置** (防泄露) |
+| `AI_API_KEY` | **生产环境用** 安全 Key | ❌ 不需要 | ✅ **必须配置** (后端专用) |
+| `AI_API_URL` | 后端用 API 地址 | ❌ 不需要 | ✅ **必须配置** |
+| `AI_MODEL` | 后端用 模型名称 | ❌ 不需要 | ✅ **必须配置** |
+
+详细部署指南请参考 [DEPLOY_TO_CLOUDFLARE.md](./DEPLOY_TO_CLOUDFLARE.md)。
+
+**本地开发示例 (.env):**
+```ini
+VITE_TRADING_PAIRS=["QQQ/GLD","IBIT/GLD","IBIT/QQQ"]
+VITE_AI_API_URL=https://qwen.deepthinks.org/v1/chat/completions
+VITE_AI_API_KEY=sk-your-key-here
+VITE_AI_MODEL=qwen3-max-2026-01-23
+```
+
+**Cloudflare 生产环境配置:**
+*   请在 Cloudflare Dashboard 项目设置中配置 `AI_API_KEY` (无 VITE 前缀)，这样 Key 不会暴露给前端用户。
+*   同时配置 `AI_API_URL` 和 `AI_MODEL` 供后端函数使用。
+
 
 ### 4. 启动开发服务器
 

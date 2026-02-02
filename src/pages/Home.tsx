@@ -54,6 +54,7 @@ export function Home() {
 
   // Modal state
   const [selectedPair, setSelectedPair] = useState<string | null>(null)
+  const [selectedDisplayName, setSelectedDisplayName] = useState<string | null>(null)
   const [chartData, setChartData] = useState<KLineData[]>([])
   const [chartLoading, setChartLoading] = useState(false)
   const [chartError, setChartError] = useState<string | null>(null)
@@ -148,16 +149,19 @@ export function Home() {
     console.log('Card clicked:', symbol)
     setIsCNChart(false)
     setSelectedPair(symbol)
+    setSelectedDisplayName(symbol) // US stocks use symbol as display name
   }
 
-  const handleCNCardClick = (symbol: string) => {
-    console.log('CN Card clicked:', symbol)
+  const handleCNCardClick = (symbol: string, displayName: string) => {
+    console.log('CN Card clicked:', symbol, displayName)
     setIsCNChart(true)
     setSelectedPair(symbol)
+    setSelectedDisplayName(displayName)
   }
 
   const closeModal = () => {
     setSelectedPair(null)
+    setSelectedDisplayName(null)
     setIsCNChart(false)
   }
 
@@ -258,7 +262,7 @@ export function Home() {
                 symbol={pair.symbol}
                 displayName={pair.displayName}
                 ratio={pair.ratio}
-                onClick={() => handleCNCardClick(pair.symbol)}
+                onClick={() => handleCNCardClick(pair.symbol, pair.displayName)}
               />
             ))}
           </div>
@@ -293,6 +297,7 @@ export function Home() {
         isOpen={!!selectedPair}
         onClose={closeModal}
         symbol={selectedPair || ''}
+        displayName={selectedDisplayName || ''}
         data={chartData}
         loading={chartLoading}
         error={chartError}

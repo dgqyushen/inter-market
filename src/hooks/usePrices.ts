@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 
-import { fetchAllPrices, PriceData, TradingPair } from '../services/priceService'
+import { fetchAllPrices, type PriceData, type TradingPair } from '../services/priceService'
 
 interface UsePricesResult {
   prices: Record<string, PriceData>

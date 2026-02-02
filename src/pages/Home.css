@@ -1,252 +1,252 @@
 .home-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
 }
 
 .page-title {
-    text-align: center;
-    margin-bottom: 2rem;
-    color: var(--text-main);
-    font-size: 2.5rem;
-    background: var(--primary-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+  text-align: center;
+  margin-bottom: 2rem;
+  color: var(--text-main);
+  font-size: 2.5rem;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .price-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 2rem;
-    margin-bottom: 2rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  margin-bottom: 2rem;
 }
 
 .error-banner {
-    background: rgba(239, 68, 68, 0.15);
-    border: 1px solid #ef4444;
-    color: #ef4444;
-    padding: 1rem;
-    border-radius: 8px;
-    text-align: center;
-    margin-bottom: 1.5rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  margin-bottom: 1.5rem;
 }
 
 .status-bar {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 1rem;
-    color: var(--text-muted);
-    font-size: 0.875rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
 }
 
 .last-updated {
-    color: var(--text-muted);
+  color: var(--text-muted);
 }
 
 .refresh-button {
-    background: var(--primary-gradient);
-    color: white;
-    border: none;
-    padding: 0.5rem 1.5rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition:
-        transform 0.2s,
-        opacity 0.2s;
+  background: var(--primary-gradient);
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition:
+    transform 0.2s,
+    opacity 0.2s;
 }
 
 .refresh-button:hover:not(:disabled) {
-    transform: scale(1.05);
+  transform: scale(1.05);
 }
 
 .refresh-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @media (max-width: 768px) {
-    .price-grid {
-        grid-template-columns: 1fr;
-    }
+  .price-grid {
+    grid-template-columns: 1fr;
+  }
 
-    .page-title {
-        font-size: 1.75rem;
-    }
+  .page-title {
+    font-size: 1.75rem;
+  }
 }
 
 /* Loading State */
 .loading-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    padding: 3rem;
-    color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem;
+  color: var(--text-muted);
 }
 
 .spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid rgba(100, 108, 255, 0.2);
-    border-top-color: #646cff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(100, 108, 255, 0.2);
+  border-top-color: #646cff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Error State */
 .error-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    padding: 2rem;
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: 12px;
-    color: #ef4444;
-    margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  color: #ef4444;
+  margin-bottom: 1.5rem;
 }
 
 .retry-btn {
-    background: #ef4444;
-    color: white;
-    border: none;
-    padding: 0.5rem 1.5rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: background 0.2s;
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background 0.2s;
 }
 
 .retry-btn:hover {
-    background: #dc2626;
+  background: #dc2626;
 }
 
 /* Refresh Button */
 .refresh-btn {
-    background: var(--primary-gradient);
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition:
-        transform 0.2s,
-        opacity 0.2s;
+  background: var(--primary-gradient);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition:
+    transform 0.2s,
+    opacity 0.2s;
 }
 
 .refresh-btn:hover:not(:disabled) {
-    transform: scale(1.05);
+  transform: scale(1.05);
 }
 
 .refresh-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .refreshing {
-    color: var(--accent-violet);
-    font-style: italic;
-    font-weight: 500;
+  color: var(--accent-violet);
+  font-style: italic;
+  font-weight: 500;
 }
 
 .next-refresh {
-    color: var(--text-secondary);
-    font-variant-numeric: tabular-nums;
-    /* 等宽数字 */
-    font-weight: 500;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  /* 等宽数字 */
+  font-weight: 500;
 }
 
 /* Market Sections */
 .market-section {
-    margin-bottom: 3rem;
-    padding: 1.5rem;
-    border-radius: 16px;
-    background: var(--surface-1);
-    border: 1px solid var(--border);
+  margin-bottom: 3rem;
+  padding: 1.5rem;
+  border-radius: 16px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
 }
 
 .section-title {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 1.5rem;
-    color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: var(--text-main);
 }
 
 .section-icon {
-    font-size: 1.75rem;
+  font-size: 1.75rem;
 }
 
 .us-section {
-    border-left: 4px solid #646cff;
+  border-left: 4px solid #646cff;
 }
 
 .cn-section {
-    border-left: 4px solid #ef4444;
+  border-left: 4px solid #ef4444;
 }
 
 /* CN Market Specific Styles */
 .cn-price-grid {
-    grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .cn-spinner {
-    border-top-color: #ef4444;
+  border-top-color: #ef4444;
 }
 
 .cn-error {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 .cn-placeholder {
-    text-align: center;
-    padding: 3rem 2rem;
-    color: var(--text-muted);
-    background: rgba(239, 68, 68, 0.03);
-    border: 2px dashed rgba(239, 68, 68, 0.2);
-    border-radius: 12px;
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--text-muted);
+  background: rgba(239, 68, 68, 0.03);
+  border: 2px dashed rgba(239, 68, 68, 0.2);
+  border-radius: 12px;
 }
 
 .cn-placeholder p {
-    margin: 0.5rem 0;
+  margin: 0.5rem 0;
 }
 
 .cn-hint {
-    font-size: 0.875rem;
-    color: var(--text-muted);
-    opacity: 0.8;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  opacity: 0.8;
 }
 
 @media (max-width: 1024px) {
-    .cn-price-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
+  .cn-price-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 480px) {
-    .cn-price-grid {
-        grid-template-columns: 1fr;
-    }
+  .cn-price-grid {
+    grid-template-columns: 1fr;
+  }
 
-    .section-title {
-        font-size: 1.25rem;
-    }
+  .section-title {
+    font-size: 1.25rem;
+  }
 }

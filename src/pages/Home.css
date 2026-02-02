@@ -170,3 +170,83 @@
     /* 等宽数字 */
     font-weight: 500;
 }
+
+/* Market Sections */
+.market-section {
+    margin-bottom: 3rem;
+    padding: 1.5rem;
+    border-radius: 16px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    color: var(--text-main);
+}
+
+.section-icon {
+    font-size: 1.75rem;
+}
+
+.us-section {
+    border-left: 4px solid #646cff;
+}
+
+.cn-section {
+    border-left: 4px solid #ef4444;
+}
+
+/* CN Market Specific Styles */
+.cn-price-grid {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.cn-spinner {
+    border-top-color: #ef4444;
+}
+
+.cn-error {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.cn-placeholder {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--text-muted);
+    background: rgba(239, 68, 68, 0.03);
+    border: 2px dashed rgba(239, 68, 68, 0.2);
+    border-radius: 12px;
+}
+
+.cn-placeholder p {
+    margin: 0.5rem 0;
+}
+
+.cn-hint {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    opacity: 0.8;
+}
+
+@media (max-width: 1024px) {
+    .cn-price-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .cn-price-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .section-title {
+        font-size: 1.25rem;
+    }
+}

@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
 import { PriceCard } from '../components/PriceCard'
-import { CNPriceCard } from '../components/CNPriceCard'
 import { StockSearchInput } from '../components/StockSearchInput'
 import { ChartModal, type TimeInterval } from '../components/ChartModal'
-import { fetchAllPrices } from '../services/priceService'
-import { fetchRatioKLine } from '../services/historyService'
 import {
   fetchCNRatioPairs,
   fetchCNRatioKLine,
   type CNTradingPair,
 } from '../services/cnStockService'
-import type { TradingPair } from '../services/priceService'
+import {
+  fetchUSRatioPairs,
+  fetchUSRatioKLine,
+  type USTradingPair,
+} from '../services/usStockService'
 import type { KLineData } from '../components/KLineChart'
 import './Home.css'
 
@@ -43,11 +44,6 @@ const formatTimeRemaining = (end: Date) => {
 }
 
 export function Home() {
-  const [pairs, setPairs] = useState<TradingPair[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-
   // Auto-refresh state
   const [nextRefreshTime, setNextRefreshTime] = useState<Date>(getNextRefreshTime)
   const [timeRemaining, setTimeRemaining] = useState<string>('')
@@ -60,12 +56,19 @@ export function Home() {
   const [chartError, setChartError] = useState<string | null>(null)
   const [chartInterval, setChartInterval] = useState<TimeInterval>('1d')
   const [isCNChart, setIsCNChart] = useState(false)
+  const [isUSSearchChart, setIsUSSearchChart] = useState(false)
 
   // CN Stock state
   const [cnPairs, setCnPairs] = useState<CNTradingPair[]>([])
   const [cnLoading, setCnLoading] = useState(false)
   const [cnError, setCnError] = useState<string | null>(null)
   const [searchedStock, setSearchedStock] = useState<string | null>(null)
+
+  // US Stock search state
+  const [usPairs, setUsPairs] = useState<USTradingPair[]>([])
+  const [usLoading, setUsLoading] = useState(false)
+  const [usError, setUsError] = useState<string | null>(null)
+  const [searchedUSStock, setSearchedUSStock] = useState<string | null>(null)
 
   // Fetch ratio K-line data when a pair is selected or interval changes
   useEffect(() => {
@@ -82,8 +85,12 @@ export function Home() {
         let data: KLineData[]
         if (isCNChart) {
           data = await fetchCNRatioKLine(selectedPair, chartInterval)
+        } else if (isUSSearchChart) {
+          data = await fetchUSRatioKLine(selectedPair, chartInterval)
         } else {
-          data = await fetchRatioKLine(selectedPair, 'max', chartInterval)
+          // Fallback or generic handling
+          setChartData([])
+          return
         }
         setChartData(data)
       } catch (err) {
@@ -96,27 +103,7 @@ export function Home() {
     }
 
     loadChartData()
-  }, [selectedPair, chartInterval, isCNChart])
-
-  const loadPrices = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const data = await fetchAllPrices()
-      setPairs(data.pairs)
-      setLastUpdated(new Date())
-    } catch (err) {
-      console.error('Failed to fetch prices:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch prices')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Initial load
-  useEffect(() => {
-    loadPrices()
-  }, [])
+  }, [selectedPair, chartInterval, isCNChart, isUSSearchChart])
 
   // Timer for countdown and auto-refresh
   useEffect(() => {
@@ -130,10 +117,13 @@ export function Home() {
       // Allow 1s buffer to ensure we don't double trigger closely
       if (now >= nextRefreshTime) {
         console.log('Auto-refreshing at', now.toLocaleTimeString())
-        loadPrices()
-        // Also refresh CN stock if one is selected
+        // Refresh CN stock if one is selected
         if (searchedStock) {
           handleCNStockSearch(searchedStock)
+        }
+        // Refresh US stock if one is selected
+        if (searchedUSStock) {
+          handleUSStockSearch(searchedUSStock)
         }
         setNextRefreshTime(getNextRefreshTime())
       }
@@ -143,18 +133,20 @@ export function Home() {
     setTimeRemaining(formatTimeRemaining(nextRefreshTime))
 
     return () => clearInterval(timer)
-  }, [nextRefreshTime, searchedStock])
-
-  const handleCardClick = (symbol: string) => {
-    console.log('Card clicked:', symbol)
-    setIsCNChart(false)
-    setSelectedPair(symbol)
-    setSelectedDisplayName(symbol) // US stocks use symbol as display name
-  }
+  }, [nextRefreshTime, searchedStock, searchedUSStock])
 
   const handleCNCardClick = (symbol: string, displayName: string) => {
     console.log('CN Card clicked:', symbol, displayName)
     setIsCNChart(true)
+    setIsUSSearchChart(false)
+    setSelectedPair(symbol)
+    setSelectedDisplayName(displayName)
+  }
+
+  const handleUSSearchCardClick = (symbol: string, displayName: string) => {
+    console.log('US Search Card clicked:', symbol, displayName)
+    setIsCNChart(false)
+    setIsUSSearchChart(true)
     setSelectedPair(symbol)
     setSelectedDisplayName(displayName)
   }
@@ -163,13 +155,17 @@ export function Home() {
     setSelectedPair(null)
     setSelectedDisplayName(null)
     setIsCNChart(false)
+    setIsUSSearchChart(false)
   }
 
   const handleManualRefresh = () => {
-    loadPrices()
-    // Also refresh CN stock if one is selected
+    // Refresh CN stock if one is selected
     if (searchedStock) {
       handleCNStockSearch(searchedStock)
+    }
+    // Refresh US stock if one is selected
+    if (searchedUSStock) {
+      handleUSStockSearch(searchedUSStock)
     }
     // Note: Manual refresh doesn't reset the auto-refresh schedule (next :00 or :30)
   }
@@ -191,43 +187,68 @@ export function Home() {
     }
   }
 
+  const handleUSStockSearch = async (symbol: string) => {
+    setUsLoading(true)
+    setUsError(null)
+    setSearchedUSStock(symbol)
+
+    try {
+      const pairs = await fetchUSRatioPairs(symbol)
+      setUsPairs(pairs)
+    } catch (err) {
+      console.error('Failed to fetch US stock:', err)
+      setUsError(err instanceof Error ? err.message : 'Failed to fetch stock data')
+      setUsPairs([])
+    } finally {
+      setUsLoading(false)
+    }
+  }
+
   return (
     <div className="home-container">
       <h1 className="page-title">Inter-market Analysis</h1>
 
-      {/* US Market Section */}
-      <section className="market-section us-section">
+      {/* US Stock Search Section */}
+      <section className="market-section us-search-section">
         <h2 className="section-title">
-          <span className="section-icon">🇺🇸</span>
-          美股市场
+          <span className="section-icon">🔎</span>
+          美股个股搜索
         </h2>
 
-        {loading && pairs.length === 0 && (
+        <StockSearchInput market="us" onSearch={handleUSStockSearch} loading={usLoading} />
+
+        {usLoading && (
           <div className="loading-state">
-            <div className="spinner"></div>
-            <span>Loading prices...</span>
+            <div className="spinner us-spinner"></div>
+            <span>Loading...</span>
           </div>
         )}
 
-        {error && (
-          <div className="error-state">
-            <span>⚠️ {error}</span>
-            <button onClick={handleManualRefresh} className="retry-btn">
-              Retry
-            </button>
+        {usError && (
+          <div className="error-state us-error">
+            <span>⚠️ {usError}</span>
           </div>
         )}
 
-        {pairs.length > 0 && (
-          <div className="price-grid">
-            {pairs.map(pair => (
+        {usPairs.length > 0 && (
+          <div className="price-grid us-price-grid">
+            {usPairs.map(pair => (
               <PriceCard
                 key={pair.symbol}
+                variant="us"
                 symbol={pair.symbol}
+                displayName={pair.displayName}
                 ratio={pair.ratio}
-                onClick={() => handleCardClick(pair.symbol)}
+                onClick={() => handleUSSearchCardClick(pair.symbol, pair.displayName)}
               />
             ))}
+          </div>
+        )}
+
+        {!usLoading && usPairs.length === 0 && !usError && (
+          <div className="us-placeholder">
+            <p>Enter a stock symbol to compare with benchmark ETFs</p>
+            <p className="us-hint">Benchmark: QQQ, GLD, IBIT</p>
           </div>
         )}
       </section>
@@ -239,7 +260,7 @@ export function Home() {
           A股市场
         </h2>
 
-        <StockSearchInput onSearch={handleCNStockSearch} loading={cnLoading} />
+        <StockSearchInput market="cn" onSearch={handleCNStockSearch} loading={cnLoading} />
 
         {cnLoading && (
           <div className="loading-state">
@@ -257,8 +278,9 @@ export function Home() {
         {cnPairs.length > 0 && (
           <div className="price-grid cn-price-grid">
             {cnPairs.map(pair => (
-              <CNPriceCard
+              <PriceCard
                 key={pair.symbol}
+                variant="cn"
                 symbol={pair.symbol}
                 displayName={pair.displayName}
                 ratio={pair.ratio}
@@ -277,7 +299,7 @@ export function Home() {
       </section>
 
       <div className="status-bar">
-        {loading && pairs.length > 0 && <span className="refreshing">Refreshing...</span>}
+        {(cnLoading || usLoading) && <span className="refreshing">Refreshing...</span>}
 
         <span className="next-refresh">
           Next refresh:{' '}
@@ -285,10 +307,7 @@ export function Home() {
           {timeRemaining})
         </span>
 
-        {lastUpdated && (
-          <span className="last-updated">Last updated: {lastUpdated.toLocaleTimeString()}</span>
-        )}
-        <button onClick={handleManualRefresh} className="refresh-btn" disabled={loading}>
+        <button onClick={handleManualRefresh} className="refresh-btn" disabled={cnLoading || usLoading}>
           🔄 Refresh
         </button>
       </div>

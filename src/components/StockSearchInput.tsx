@@ -1,21 +1,88 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { searchStocks, type StockSearchResult } from '../services/stockSearchService'
+import { searchUSStocks, type USStockSearchResult } from '../services/usStockSearchService'
 import './StockSearchInput.css'
 
+// 搜索结果的统一类型
+type SearchResult = StockSearchResult | USStockSearchResult
+
+// 市场配置
+interface MarketConfig {
+  placeholder: string
+  hint: string
+  buttonText: string
+  loadingText: string
+  emptyError: string
+  selectError: string
+  validateInput: (value: string) => boolean
+  getDisplayText: (result: SearchResult) => string
+  getKey: (result: SearchResult) => string
+  getCode: (result: SearchResult) => string
+  getName: (result: SearchResult) => string
+  getMarket: (result: SearchResult) => string
+  searchFn: (keyword: string) => Promise<SearchResult[]>
+}
+
+const MARKET_CONFIGS: Record<'cn' | 'us', MarketConfig> = {
+  cn: {
+    placeholder: '输入股票代码、中文名称或拼音首字母',
+    hint: '支持代码(600000)、中文名(平安银行)、拼音首字母(payh)',
+    buttonText: '查询',
+    loadingText: '...',
+    emptyError: '请输入股票代码或名称',
+    selectError: '请从搜索结果中选择股票',
+    validateInput: (value: string) => /^\d{6}$/.test(value.trim().replace(/\D/g, '')),
+    getDisplayText: (result: SearchResult) => {
+      const r = result as StockSearchResult
+      return `${r.code} ${r.name}`
+    },
+    getKey: (result: SearchResult) => {
+      const r = result as StockSearchResult
+      return `${r.code}-${r.market}`
+    },
+    getCode: (result: SearchResult) => (result as StockSearchResult).code,
+    getName: (result: SearchResult) => (result as StockSearchResult).name,
+    getMarket: (result: SearchResult) => (result as StockSearchResult).market,
+    searchFn: searchStocks,
+  },
+  us: {
+    placeholder: 'Enter stock symbol or company name',
+    hint: 'Search by symbol (AAPL) or company name (Apple)',
+    buttonText: 'Search',
+    loadingText: '...',
+    emptyError: 'Please enter a stock symbol',
+    selectError: 'Please select from search results',
+    validateInput: (value: string) => /^[A-Z]{1,5}$/.test(value.trim().toUpperCase()),
+    getDisplayText: (result: SearchResult) => {
+      const r = result as USStockSearchResult
+      return `${r.symbol} ${r.name}`
+    },
+    getKey: (result: SearchResult) => (result as USStockSearchResult).symbol,
+    getCode: (result: SearchResult) => (result as USStockSearchResult).symbol,
+    getName: (result: SearchResult) => (result as USStockSearchResult).name,
+    getMarket: (result: SearchResult) => (result as USStockSearchResult).exchange,
+    searchFn: searchUSStocks as (keyword: string) => Promise<SearchResult[]>,
+  },
+}
+
 interface StockSearchInputProps {
-  onSearch: (stockCode: string, stockName?: string) => void
+  market: 'cn' | 'us'
+  onSearch: (code: string, name?: string) => void
   loading?: boolean
   placeholder?: string
 }
 
 export function StockSearchInput({
+  market,
   onSearch,
   loading = false,
-  placeholder = '输入股票代码、中文名称或拼音首字母',
+  placeholder,
 }: StockSearchInputProps) {
+  const config = MARKET_CONFIGS[market]
+
   const [inputValue, setInputValue] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [suggestions, setSuggestions] = useState<StockSearchResult[]>([])
+  const [suggestions, setSuggestions] = useState<SearchResult[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const [isSearching, setIsSearching] = useState(false)
@@ -42,53 +109,56 @@ export function StockSearchInput({
   }, [])
 
   // Debounced search
-  const searchWithDebounce = useCallback((value: string) => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current)
-    }
-
-    if (value.trim().length < 1) {
-      setSuggestions([])
-      setShowSuggestions(false)
-      return
-    }
-
-    debounceRef.current = setTimeout(async () => {
-      setIsSearching(true)
-      try {
-        const results = await searchStocks(value)
-        setSuggestions(results)
-        setShowSuggestions(results.length > 0)
-        setSelectedIndex(-1)
-      } catch (err) {
-        console.error('Search error:', err)
-        setSuggestions([])
-      } finally {
-        setIsSearching(false)
+  const searchWithDebounce = useCallback(
+    (value: string) => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
       }
-    }, 300)
-  }, [])
+
+      if (value.trim().length < 1) {
+        setSuggestions([])
+        setShowSuggestions(false)
+        return
+      }
+
+      debounceRef.current = setTimeout(async () => {
+        setIsSearching(true)
+        try {
+          const results = await config.searchFn(value)
+          setSuggestions(results)
+          setShowSuggestions(results.length > 0)
+          setSelectedIndex(-1)
+        } catch (err) {
+          console.error('Search error:', err)
+          setSuggestions([])
+        } finally {
+          setIsSearching(false)
+        }
+      }, 300)
+    },
+    [config]
+  )
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault()
       if (!inputValue.trim()) {
-        setError('请输入股票代码或名称')
+        setError(config.emptyError)
         return
       }
 
-      // If pure 6-digit code, submit directly
-      const pureCode = inputValue.trim().replace(/\D/g, '')
-      if (pureCode.length === 6) {
-        onSearch(pureCode)
+      // If input looks valid, submit directly
+      if (config.validateInput(inputValue)) {
+        const code = market === 'us' ? inputValue.trim().toUpperCase() : inputValue.trim().replace(/\D/g, '')
+        onSearch(code)
         setShowSuggestions(false)
         return
       }
 
       // Otherwise show error - must select from suggestions
-      setError('请从搜索结果中选择股票')
+      setError(config.selectError)
     },
-    [inputValue, onSearch]
+    [inputValue, onSearch, config, market]
   )
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,9 +170,9 @@ export function StockSearchInput({
     searchWithDebounce(value)
   }
 
-  const handleSuggestionClick = (suggestion: StockSearchResult) => {
-    setInputValue(`${suggestion.code} ${suggestion.name}`)
-    onSearch(suggestion.code, suggestion.name)
+  const handleSuggestionClick = (suggestion: SearchResult) => {
+    setInputValue(config.getDisplayText(suggestion))
+    onSearch(config.getCode(suggestion), config.getName(suggestion))
     setShowSuggestions(false)
     setSuggestions([])
   }
@@ -148,7 +218,7 @@ export function StockSearchInput({
   }
 
   return (
-    <div className="stock-search-container">
+    <div className={`stock-search-container stock-search--${market}`}>
       <form className="stock-search-form" onSubmit={handleSubmit}>
         <div className="search-input-wrapper">
           <span className="search-icon">🔍</span>
@@ -160,25 +230,25 @@ export function StockSearchInput({
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             onFocus={handleFocus}
-            placeholder={placeholder}
-            maxLength={20}
+            placeholder={placeholder || config.placeholder}
+            maxLength={market === 'us' ? 50 : 20}
             disabled={loading}
           />
-          {isSearching && <span className="search-loading">...</span>}
+          {isSearching && <span className="search-loading">{config.loadingText}</span>}
 
           {/* Suggestions dropdown */}
           {showSuggestions && suggestions.length > 0 && (
             <div ref={suggestionsRef} className="suggestions-dropdown">
               {suggestions.map((suggestion, index) => (
                 <div
-                  key={`${suggestion.code}-${suggestion.market}`}
+                  key={config.getKey(suggestion)}
                   className={`suggestion-item ${index === selectedIndex ? 'selected' : ''}`}
                   onClick={() => handleSuggestionClick(suggestion)}
                   onMouseEnter={() => setSelectedIndex(index)}
                 >
-                  <span className="suggestion-code">{suggestion.code}</span>
-                  <span className="suggestion-name">{suggestion.name}</span>
-                  <span className="suggestion-market">{suggestion.market}</span>
+                  <span className="suggestion-code">{config.getCode(suggestion)}</span>
+                  <span className="suggestion-name">{config.getName(suggestion)}</span>
+                  <span className="suggestion-market">{config.getMarket(suggestion)}</span>
                 </div>
               ))}
             </div>
@@ -189,12 +259,12 @@ export function StockSearchInput({
           className="search-submit-btn"
           disabled={loading || !inputValue.trim()}
         >
-          {loading ? <span className="btn-spinner"></span> : <span>查询</span>}
+          {loading ? <span className="btn-spinner"></span> : <span>{config.buttonText}</span>}
         </button>
       </form>
       {error && <p className="search-error">{error}</p>}
       <div className="search-hint">
-        <span>支持代码(600000)、中文名(平安银行)、拼音首字母(payh)</span>
+        <span>{config.hint}</span>
       </div>
     </div>
   )

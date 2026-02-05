@@ -1,13 +1,14 @@
 import type { KLineData } from '../components/KLineChart'
-
-const CORS_PROXY = 'https://corsproxy.io/?'
-const YAHOO_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart'
-
-// 基准ETF接口
-interface BenchmarkETF {
-  symbol: string
-  name: string
-}
+import {
+  type BenchmarkETF,
+  type StockPrice,
+  type TradingPair,
+  parseBenchmarkETFs,
+  getAppropriateRange,
+  calculateRatioKLine,
+  fetchQuote,
+  fetchHistoricalData,
+} from './stockServiceBase'
 
 // 默认A股基准ETF列表
 const DEFAULT_CN_BENCHMARK_ETFS: BenchmarkETF[] = [
@@ -16,84 +17,15 @@ const DEFAULT_CN_BENCHMARK_ETFS: BenchmarkETF[] = [
   { symbol: '159949.SZ', name: '创业板50ETF' },
 ]
 
-// 从环境变量解析基准ETF配置
-function parseBenchmarkETFs(): BenchmarkETF[] {
-  const envValue = import.meta.env.VITE_CN_BENCHMARK_ETFS
-
-  if (!envValue) {
-    return DEFAULT_CN_BENCHMARK_ETFS
-  }
-
-  try {
-    const parsed = JSON.parse(envValue)
-    if (!Array.isArray(parsed)) {
-      console.warn('VITE_CN_BENCHMARK_ETFS is not an array, using default')
-      return DEFAULT_CN_BENCHMARK_ETFS
-    }
-
-    // 验证每个条目的格式
-    const validEtfs = parsed.filter(
-      (item: unknown) =>
-        typeof item === 'object' &&
-        item !== null &&
-        'symbol' in item &&
-        'name' in item &&
-        typeof (item as BenchmarkETF).symbol === 'string' &&
-        typeof (item as BenchmarkETF).name === 'string'
-    )
-
-    if (validEtfs.length === 0) {
-      console.warn('No valid ETFs found in VITE_CN_BENCHMARK_ETFS, using default')
-      return DEFAULT_CN_BENCHMARK_ETFS
-    }
-
-    return validEtfs as BenchmarkETF[]
-  } catch {
-    console.warn('Failed to parse VITE_CN_BENCHMARK_ETFS, using default')
-    return DEFAULT_CN_BENCHMARK_ETFS
-  }
-}
-
 // A股基准ETF列表 (支持环境变量配置)
-export const CN_BENCHMARK_ETFS: BenchmarkETF[] = parseBenchmarkETFs()
+export const CN_BENCHMARK_ETFS: BenchmarkETF[] = parseBenchmarkETFs(
+  'VITE_CN_BENCHMARK_ETFS',
+  DEFAULT_CN_BENCHMARK_ETFS
+)
 
-export interface CNStockPrice {
-  symbol: string
-  name: string
-  price: number
-  change: number
-  percentChange: number
-  timestamp: number
-}
-
-export interface CNTradingPair {
-  symbol: string // e.g., "000001.SS/510300.SS"
-  displayName: string // e.g., "平安银行 / 沪深300ETF"
-  ratio: number
-  numeratorPrice: number
-  denominatorPrice: number
-}
-
-interface YahooChartResult {
-  timestamp: number[]
-  meta: {
-    regularMarketPrice: number
-    previousClose?: number
-    chartPreviousClose?: number
-    symbol: string
-    shortName?: string
-    longName?: string
-  }
-  indicators: {
-    quote: Array<{
-      open: number[]
-      high: number[]
-      low: number[]
-      close: number[]
-      volume: number[]
-    }>
-  }
-}
+// 类型别名，保持向后兼容
+export type CNStockPrice = StockPrice
+export type CNTradingPair = TradingPair
 
 /**
  * Convert user input to Yahoo Finance symbol format
@@ -147,43 +79,10 @@ export function convertToCNSymbol(input: string): string {
 }
 
 /**
- * Fetch current price for a CN stock
- */
-async function fetchCNQuote(symbol: string): Promise<CNStockPrice> {
-  const url = `${CORS_PROXY}${encodeURIComponent(`${YAHOO_BASE}/${symbol}?interval=1d&range=1d`)}`
-
-  const response = await fetch(url)
-
-  if (!response.ok) {
-    throw new Error(`获取 ${symbol} 失败: ${response.statusText}`)
-  }
-
-  const data = await response.json()
-  const result: YahooChartResult = data.chart?.result?.[0]
-
-  if (!result) {
-    throw new Error(`无法获取 ${symbol} 的数据`)
-  }
-
-  const meta = result.meta
-  const price = meta.regularMarketPrice
-  const previousClose = meta.previousClose || meta.chartPreviousClose || price
-
-  return {
-    symbol,
-    name: meta.shortName || meta.longName || symbol,
-    price,
-    change: price - previousClose,
-    percentChange: ((price - previousClose) / previousClose) * 100,
-    timestamp: Date.now(),
-  }
-}
-
-/**
  * Fetch prices for all benchmark ETFs
  */
 export async function fetchBenchmarkPrices(): Promise<Record<string, CNStockPrice>> {
-  const results = await Promise.all(CN_BENCHMARK_ETFS.map(etf => fetchCNQuote(etf.symbol)))
+  const results = await Promise.all(CN_BENCHMARK_ETFS.map(etf => fetchQuote(etf.symbol)))
 
   const prices: Record<string, CNStockPrice> = {}
   results.forEach(result => {
@@ -198,7 +97,7 @@ export async function fetchBenchmarkPrices(): Promise<Record<string, CNStockPric
  */
 export async function fetchCNStockPrice(stockCode: string): Promise<CNStockPrice> {
   const symbol = convertToCNSymbol(stockCode)
-  return fetchCNQuote(symbol)
+  return fetchQuote(symbol)
 }
 
 /**
@@ -209,7 +108,7 @@ export async function fetchCNRatioPairs(stockCode: string): Promise<CNTradingPai
 
   // Fetch stock and all benchmarks in parallel
   const [stockPrice, benchmarkPrices] = await Promise.all([
-    fetchCNQuote(symbol),
+    fetchQuote(symbol),
     fetchBenchmarkPrices(),
   ])
 
@@ -231,125 +130,6 @@ export async function fetchCNRatioPairs(stockCode: string): Promise<CNTradingPai
 }
 
 /**
- * Fetch historical K-line data for a CN stock
- */
-async function fetchCNHistoricalData(
-  symbol: string,
-  range: string = 'max',
-  interval: string = '1d'
-): Promise<KLineData[]> {
-  const apiUrl = `${YAHOO_BASE}/${symbol}?interval=${interval}&range=${range}`
-  const url = `${CORS_PROXY}${encodeURIComponent(apiUrl)}`
-
-  const response = await fetch(url)
-
-  if (!response.ok) {
-    throw new Error(`获取 ${symbol} 历史数据失败: ${response.statusText}`)
-  }
-
-  const data = await response.json()
-  const result: YahooChartResult = data.chart?.result?.[0]
-
-  if (!result || !result.timestamp) {
-    throw new Error(`无法获取 ${symbol} 的历史数据`)
-  }
-
-  const { timestamp, indicators } = result
-  const quote = indicators.quote[0]
-
-  const klineData: KLineData[] = []
-
-  for (let i = 0; i < timestamp.length; i++) {
-    if (
-      quote.open[i] == null ||
-      quote.high[i] == null ||
-      quote.low[i] == null ||
-      quote.close[i] == null
-    ) {
-      continue
-    }
-
-    klineData.push({
-      timestamp: timestamp[i] * 1000,
-      open: quote.open[i],
-      high: quote.high[i],
-      low: quote.low[i],
-      close: quote.close[i],
-      volume: quote.volume[i] || 0,
-    })
-  }
-
-  return klineData
-}
-
-/**
- * Get appropriate range based on interval
- */
-function getAppropriateRange(interval: string): string {
-  switch (interval) {
-    case '1d':
-      return '2y'
-    case '1wk':
-      return '10y'
-    case '1mo':
-      return 'max'
-    default:
-      return '2y'
-  }
-}
-
-/**
- * Calculate ratio K-line data from two symbols' historical data
- */
-function calculateRatioKLine(
-  numeratorData: KLineData[],
-  denominatorData: KLineData[]
-): KLineData[] {
-  const numFirstTimestamp = numeratorData.length > 0 ? numeratorData[0].timestamp : 0
-  const denomFirstTimestamp = denominatorData.length > 0 ? denominatorData[0].timestamp : 0
-  const commonStartTimestamp = Math.max(numFirstTimestamp, denomFirstTimestamp)
-
-  const denomMap = new Map<number, KLineData>()
-  denominatorData.forEach(item => {
-    denomMap.set(item.timestamp, item)
-  })
-
-  const ratioData: KLineData[] = []
-
-  for (const numItem of numeratorData) {
-    if (numItem.timestamp < commonStartTimestamp) {
-      continue
-    }
-
-    const denomItem = denomMap.get(numItem.timestamp)
-
-    if (!denomItem) {
-      continue
-    }
-
-    const ratioOpen = numItem.open / denomItem.open
-    const ratioClose = numItem.close / denomItem.close
-
-    const possibleHighs = [numItem.high / denomItem.low, numItem.high / denomItem.high]
-    const possibleLows = [numItem.low / denomItem.high, numItem.low / denomItem.low]
-
-    const ratioHigh = Math.max(...possibleHighs, ratioOpen, ratioClose)
-    const ratioLow = Math.min(...possibleLows, ratioOpen, ratioClose)
-
-    ratioData.push({
-      timestamp: numItem.timestamp,
-      open: ratioOpen,
-      high: ratioHigh,
-      low: ratioLow,
-      close: ratioClose,
-      volume: numItem.volume,
-    })
-  }
-
-  return ratioData
-}
-
-/**
  * Fetch ratio K-line data for a CN trading pair
  * @param pairSymbol - Trading pair symbol (e.g., '600000.SS/510300.SS')
  * @param interval - Data interval
@@ -367,8 +147,8 @@ export async function fetchCNRatioKLine(
   const actualRange = getAppropriateRange(interval)
 
   const [numeratorData, denominatorData] = await Promise.all([
-    fetchCNHistoricalData(numerator.trim(), actualRange, interval),
-    fetchCNHistoricalData(denominator.trim(), actualRange, interval),
+    fetchHistoricalData(numerator.trim(), actualRange, interval),
+    fetchHistoricalData(denominator.trim(), actualRange, interval),
   ])
 
   return calculateRatioKLine(numeratorData, denominatorData)

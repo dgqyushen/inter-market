@@ -1,159 +1,154 @@
 # 部署到 Cloudflare Pages 指南
 
-这个项目是一个基于 Vite 的 React 单页应用 (SPA)，使用 Cloudflare Pages Functions 作为后端代理来：
-1. **保护 API Key** - AI 相关密钥只存储在服务端
-2. **代理 Yahoo Finance API** - 解决浏览器 CORS 限制
+这个项目使用 **统一的环境变量配置**，本地开发和生产环境使用相同的变量名（只是前缀不同）。
 
-## 快速开始
+## 配置变量对照表
+
+| 功能 | 本地开发 (.env) | Cloudflare Pages |
+|------|----------------|------------------|
+| A股基准ETF | `VITE_CN_BENCHMARK_ETFS` | `CN_BENCHMARK_ETFS` |
+| AI API 地址 | `VITE_AI_API_URL` | `AI_API_URL` |
+| AI API 密钥 | `VITE_AI_API_KEY` | `AI_API_KEY` |
+| AI 模型 | `VITE_AI_MODEL` | `AI_MODEL` |
+
+**核心区别**：
+- 本地开发：使用 `VITE_` 前缀，前端直接读取
+- 生产环境：不带前缀，通过 Cloudflare Functions 安全读取
+
+---
+
+## 快速部署
 
 ### 1. 推送代码到 GitHub
 
 ```bash
 git add .
-git commit -m "chore: prepare for cloudflare deployment"
+git commit -m "chore: update deployment config"
 git push origin main
 ```
 
 ### 2. 在 Cloudflare Dashboard 创建项目
 
 1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)
-2. 进入 **Compute (Workers & Pages)** -> **Pages**
-3. 点击 **Connect to Git**
-4. 授权并选择你的 GitHub 仓库
-5. 配置构建设置：
+2. 进入 **Workers & Pages** -> **Pages** -> **Connect to Git**
+3. 选择你的 GitHub 仓库
+4. 配置构建设置：
 
 | 设置项 | 值 |
 |--------|-----|
 | Framework preset | `Vite` |
 | Build command | `npm run build` |
 | Build output directory | `dist` |
-| Root directory | `/` (默认) |
 
-### 3. 配置环境变量 ⚠️ 重要
+### 3. 配置环境变量
 
-在 **Settings** -> **Environment variables** 中添加以下变量：
+在 **Settings** -> **Environment variables** 中添加：
 
-#### 前端变量 (需要 VITE_ 前缀)
-
-这些变量会被打包到前端代码中：
-
-| 变量名 | 示例值 | 说明 |
-|--------|--------|------|
-| `VITE_TRADING_PAIRS` | `["QQQ/GLD","IBIT/GLD","IBIT/QQQ"]` | 交易对配置 |
-| `VITE_CN_BENCHMARK_ETFS` | `[{"symbol":"510300.SS","name":"沪深300ETF"}]` | A股基准ETF |
-
-#### 服务端变量 (不带 VITE_ 前缀) 🔐
-
-这些变量**只在服务端使用**，不会暴露给前端：
-
-| 变量名 | 示例值 | 说明 |
-|--------|--------|------|
-| `AI_API_KEY` | `sk-xxxxx` | **必须** - AI API 密钥 |
-| `AI_API_URL` | `https://api.openai.com/v1/chat/completions` | AI API 地址 |
-| `AI_MODEL` | `gpt-4o` | 使用的模型 |
+```
+CN_BENCHMARK_ETFS = [{"symbol":"510300.SS","name":"沪深300ETF"},{"symbol":"510050.SS","name":"上证50ETF"},{"symbol":"159949.SZ","name":"创业板50ETF"}]
+AI_API_KEY = sk-你的密钥
+AI_API_URL = https://api.openai.com/v1/chat/completions
+AI_MODEL = gpt-4o
+```
 
 ### 4. 部署
 
-点击 **Save and Deploy**，等待构建完成即可。
-
----
-
-## 安全架构说明
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         用户浏览器                               │
-│   ┌─────────────────────────────────────────────────────────┐   │
-│   │  React App (dist/)                                      │   │
-│   │  - 读取 VITE_* 环境变量 (构建时注入)                      │   │
-│   │  - 不包含任何 API Key                                    │   │
-│   └─────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Cloudflare Pages                              │
-│   ┌─────────────────────────────────────────────────────────┐   │
-│   │  Functions (functions/)                                  │   │
-│   │                                                          │   │
-│   │  /api/analyze     → 代理 AI 请求 (注入 AI_API_KEY)        │   │
-│   │  /api/yahoo/*     → 代理 Yahoo Chart API                 │   │
-│   │  /api/yahoo-search/* → 代理 Yahoo Search API             │   │
-│   │                                                          │   │
-│   │  服务端变量 (安全存储):                                    │   │
-│   │  - AI_API_KEY                                            │   │
-│   │  - AI_API_URL                                            │   │
-│   │  - AI_MODEL                                              │   │
-│   └─────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-         ┌────────────────────┴────────────────────┐
-         ▼                                         ▼
-┌─────────────────────┐                 ┌─────────────────────┐
-│   AI Provider       │                 │   Yahoo Finance     │
-│   (OpenAI/其他)     │                 │   API               │
-└─────────────────────┘                 └─────────────────────┘
-```
+点击 **Save and Deploy**。
 
 ---
 
 ## 本地开发
 
-### 方式一：纯 Vite 模式 (推荐日常开发)
+### 方式一：标准开发 (推荐)
 
+1. 复制配置模板：
+```bash
+cp .env.example .env
+```
+
+2. 编辑 `.env`，填入真实值：
+```env
+VITE_CN_BENCHMARK_ETFS=[{"symbol":"510300.SS","name":"沪深300ETF"}]
+VITE_AI_API_URL=https://api.openai.com/v1/chat/completions
+VITE_AI_API_KEY=sk-你的密钥
+VITE_AI_MODEL=gpt-4o
+```
+
+3. 启动开发服务器：
 ```bash
 npm run dev
 ```
 
-在 `.env` 文件中配置 `VITE_AI_API_KEY`，前端会直接使用它调用 AI。
-Yahoo Finance API 请求会通过 Vite 的开发服务器代理。
-
-### 方式二：完整 Cloudflare 模拟
+### 方式二：模拟生产环境 (使用 Wrangler)
 
 如果你想在本地测试 Cloudflare Functions：
 
+1. 安装并配置：
 ```bash
-# 安装 wrangler
 npm install -g wrangler
+cp .dev.vars.example .dev.vars
+# 编辑 .dev.vars 填入服务端变量
+```
 
-# 构建项目
+2. 构建并运行：
+```bash
 npm run build
-
-# 使用 wrangler 运行
 wrangler pages dev dist
 ```
 
-然后在 `.dev.vars` 文件中配置服务端变量：
+---
+
+## 安全架构
 
 ```
-AI_API_KEY=sk-xxxxx
-AI_API_URL=https://api.openai.com/v1/chat/completions
-AI_MODEL=gpt-4o
+┌─────────────────────────────────────────────────────────────────┐
+│                         用户浏览器                               │
+│   ┌─────────────────────────────────────────────────────────┐   │
+│   │  React App                                              │   │
+│   │  - 本地开发: 读取 VITE_* 变量                            │   │
+│   │  - 生产环境: 从 /api/config 获取配置                     │   │
+│   │  - AI 请求: 走 /api/analyze 代理                        │   │
+│   └─────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Cloudflare Pages Functions                    │
+│                                                                  │
+│  /api/config      → 返回 CN_BENCHMARK_ETFS 等配置               │
+│  /api/analyze     → 代理 AI 请求 (注入 AI_API_KEY)              │
+│  /api/yahoo/*     → 代理 Yahoo Finance Chart API                │
+│  /api/yahoo-search/* → 代理 Yahoo Finance Search API            │
+│                                                                  │
+│  服务端变量 (安全存储，不暴露给前端):                            │
+│  - AI_API_KEY                                                    │
+│  - AI_API_URL                                                    │
+│  - AI_MODEL                                                      │
+│  - CN_BENCHMARK_ETFS                                             │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## 常见问题
 
-### Q: 为什么我的 AI 分析功能不工作？
+### Q: 为什么本地用 VITE_，生产用不带前缀？
 
-检查以下几点：
-1. 确保在 Cloudflare Dashboard 中配置了 `AI_API_KEY`（不带 VITE_ 前缀）
-2. 检查 `AI_API_URL` 是否正确
-3. 查看 Cloudflare Pages 的 Functions 日志
+Vite 只会将 `VITE_` 前缀的环境变量暴露给前端代码。
+生产环境中，我们通过 Cloudflare Functions 读取不带前缀的变量，
+这样敏感信息（如 API Key）不会暴露到前端。
 
-### Q: 部署后 Yahoo Finance 数据加载不出来？
+### Q: 可以完全不用 VITE_ 前缀吗？
 
-项目已经包含了 Yahoo Finance API 的代理函数，应该可以正常工作。
-如果有问题，检查 Cloudflare Functions 的日志。
+可以！使用 `wrangler pages dev` 运行本地环境，
+配置 `.dev.vars` 文件，就可以完全模拟生产环境。
 
 ### Q: 如何更换 API Key？
 
-直接在 Cloudflare Dashboard 中修改 `AI_API_KEY` 环境变量，
-无需重新部署前端代码。
+直接在 Cloudflare Dashboard 修改 `AI_API_KEY`，
+无需重新构建或部署。
 
-### Q: .env 文件会被上传到 GitHub 吗？
+### Q: .env 文件会上传到 GitHub 吗？
 
-不会，`.env` 已经在 `.gitignore` 中被排除。
-只有 `.env.example` 会被上传作为模板参考。
+不会！`.env` 和 `.dev.vars` 都在 `.gitignore` 中。
+只有 `.env.example` 和 `.dev.vars.example` 会上传。

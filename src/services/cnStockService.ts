@@ -3,29 +3,39 @@ import {
   type BenchmarkETF,
   type StockPrice,
   type TradingPair,
-  parseBenchmarkETFs,
   getAppropriateRange,
   calculateRatioKLine,
   fetchQuote,
   fetchHistoricalData,
 } from './stockServiceBase'
+import { getAppConfig, getAppConfigSync } from './configService'
 
-// 默认A股基准ETF列表
-const DEFAULT_CN_BENCHMARK_ETFS: BenchmarkETF[] = [
+// 类型别名，保持向后兼容
+export type CNStockPrice = StockPrice
+export type CNTradingPair = TradingPair
+
+// 为了兼容性，导出一个默认的 ETF 列表（同步访问）
+// 建议使用 getCNBenchmarkETFs() 异步获取最新配置
+export const CN_BENCHMARK_ETFS: BenchmarkETF[] = [
   { symbol: '510300.SS', name: '沪深300ETF' },
   { symbol: '510050.SS', name: '上证50ETF' },
   { symbol: '159949.SZ', name: '创业板50ETF' },
 ]
 
-// A股基准ETF列表 (支持环境变量配置)
-export const CN_BENCHMARK_ETFS: BenchmarkETF[] = parseBenchmarkETFs(
-  'VITE_CN_BENCHMARK_ETFS',
-  DEFAULT_CN_BENCHMARK_ETFS
-)
+/**
+ * 获取 A 股基准 ETF 列表（异步，推荐使用）
+ */
+export async function getCNBenchmarkETFs(): Promise<BenchmarkETF[]> {
+  const config = await getAppConfig()
+  return config.cnBenchmarkEtfs
+}
 
-// 类型别名，保持向后兼容
-export type CNStockPrice = StockPrice
-export type CNTradingPair = TradingPair
+/**
+ * 获取 A 股基准 ETF 列表（同步，仅在配置已加载后使用）
+ */
+export function getCNBenchmarkETFsSync(): BenchmarkETF[] {
+  return getAppConfigSync().cnBenchmarkEtfs
+}
 
 /**
  * Convert user input to Yahoo Finance symbol format
@@ -82,7 +92,8 @@ export function convertToCNSymbol(input: string): string {
  * Fetch prices for all benchmark ETFs
  */
 export async function fetchBenchmarkPrices(): Promise<Record<string, CNStockPrice>> {
-  const results = await Promise.all(CN_BENCHMARK_ETFS.map(etf => fetchQuote(etf.symbol)))
+  const etfs = await getCNBenchmarkETFs()
+  const results = await Promise.all(etfs.map(etf => fetchQuote(etf.symbol)))
 
   const prices: Record<string, CNStockPrice> = {}
   results.forEach(result => {
@@ -105,6 +116,7 @@ export async function fetchCNStockPrice(stockCode: string): Promise<CNStockPrice
  */
 export async function fetchCNRatioPairs(stockCode: string): Promise<CNTradingPair[]> {
   const symbol = convertToCNSymbol(stockCode)
+  const etfs = await getCNBenchmarkETFs()
 
   // Fetch stock and all benchmarks in parallel
   const [stockPrice, benchmarkPrices] = await Promise.all([
@@ -113,7 +125,7 @@ export async function fetchCNRatioPairs(stockCode: string): Promise<CNTradingPai
   ])
 
   // Calculate ratio with each benchmark
-  const pairs: CNTradingPair[] = CN_BENCHMARK_ETFS.map(etf => {
+  const pairs: CNTradingPair[] = etfs.map(etf => {
     const benchmarkPrice = benchmarkPrices[etf.symbol]
     const ratio = benchmarkPrice.price !== 0 ? stockPrice.price / benchmarkPrice.price : 0
 

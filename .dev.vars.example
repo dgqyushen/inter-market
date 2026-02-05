@@ -2,10 +2,14 @@
 # Cloudflare Wrangler 本地开发服务端变量
 # =============================================================================
 # 复制此文件为 .dev.vars 并填入真实值
-# 这些变量只在 wrangler pages dev 时使用
+# 这些变量在 wrangler pages dev 时模拟生产环境使用
 # ⚠️ 不要提交 .dev.vars 到 Git！
 # =============================================================================
 
+# A股基准ETF配置 (与 Cloudflare Dashboard 配置相同)
+CN_BENCHMARK_ETFS=[{"symbol":"510300.SS","name":"沪深300ETF"},{"symbol":"510050.SS","name":"上证50ETF"},{"symbol":"159949.SZ","name":"创业板50ETF"}]
+
+# AI 服务配置
 AI_API_KEY=sk-your-secret-key-here
 AI_API_URL=https://api.openai.com/v1/chat/completions
 AI_MODEL=gpt-4o

@@ -3,25 +3,18 @@ import {
     type BenchmarkETF,
     type StockPrice,
     type TradingPair,
-    parseBenchmarkETFs,
     getAppropriateRange,
     calculateRatioKLine,
     fetchQuote,
     fetchHistoricalData,
 } from './stockServiceBase'
 
-// 默认美股基准ETF列表
-const DEFAULT_US_BENCHMARK_ETFS: BenchmarkETF[] = [
+// 美股基准ETF列表 (固定值，不需要环境变量配置)
+export const US_BENCHMARK_ETFS: BenchmarkETF[] = [
     { symbol: 'QQQ', name: 'QQQ' },
     { symbol: 'GLD', name: 'GLD' },
     { symbol: 'IBIT', name: 'IBIT' },
 ]
-
-// 美股基准ETF列表 (支持环境变量配置)
-export const US_BENCHMARK_ETFS: BenchmarkETF[] = parseBenchmarkETFs(
-    'VITE_US_BENCHMARK_ETFS',
-    DEFAULT_US_BENCHMARK_ETFS
-)
 
 // 类型别名，保持向后兼容
 export type USStockPrice = StockPrice

@@ -1,8 +1,10 @@
 import type { KLineData } from '../components/KLineChart'
 
-const AI_API_URL = import.meta.env.VITE_AI_API_URL || ''
-const AI_API_KEY = import.meta.env.VITE_AI_API_KEY || ''
-const AI_MODEL = import.meta.env.VITE_AI_MODEL || 'gpt-4o'
+// 开发模式下的直接调用配置（可选，用于本地调试）
+// 生产环境统一使用 /api/analyze 后端代理
+const DEV_AI_API_URL = import.meta.env.VITE_AI_API_URL || ''
+const DEV_AI_API_KEY = import.meta.env.VITE_AI_API_KEY || ''
+const DEV_AI_MODEL = import.meta.env.VITE_AI_MODEL || 'gpt-4o'
 
 export interface AIAnalysisResult {
   success: boolean
@@ -11,10 +13,10 @@ export interface AIAnalysisResult {
 }
 
 /**
- * 检查AI配置是否已设置
+ * 检查是否有本地开发模式的 AI 配置
  */
-export function isAIConfigured(): boolean {
-  return Boolean(AI_API_URL && AI_API_KEY && AI_API_KEY !== 'your-api-key-here')
+function hasLocalDevConfig(): boolean {
+  return Boolean(DEV_AI_API_URL && DEV_AI_API_KEY && DEV_AI_API_KEY !== 'your-api-key-here')
 }
 
 /**
@@ -156,15 +158,15 @@ export async function analyzeKLineWithAIStream(
     let response: Response
 
     // 优先检查是否有本地直连配置 (Local Dev)
-    if (isAIConfigured()) {
-      response = await fetch(AI_API_URL, {
+    if (hasLocalDevConfig()) {
+      response = await fetch(DEV_AI_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${AI_API_KEY}`,
+          Authorization: `Bearer ${DEV_AI_API_KEY}`,
         },
         body: JSON.stringify({
-          model: AI_MODEL,
+          model: DEV_AI_MODEL,
           messages,
           temperature: 0.7,
           max_tokens: 1500,
@@ -246,16 +248,17 @@ export async function analyzeKLineWithAIStream(
 
 /**
  * 非流式调用AI接口进行分析（保留兼容性）
+ * 注意：此函数仅在本地开发配置存在时可用
  */
 export async function analyzeKLineWithAI(
   data: KLineData[],
   symbol: string,
   interval: string
 ): Promise<AIAnalysisResult> {
-  if (!isAIConfigured()) {
+  if (!hasLocalDevConfig()) {
     return {
       success: false,
-      error: '请先在 .env 文件中配置 AI API (VITE_AI_API_URL, VITE_AI_API_KEY)',
+      error: '非流式分析需要本地 AI 配置，请使用流式分析或配置 VITE_AI_* 环境变量',
     }
   }
 
@@ -269,14 +272,14 @@ export async function analyzeKLineWithAI(
   const { systemPrompt, userPrompt } = getPrompts(data, symbol, interval)
 
   try {
-    const response = await fetch(AI_API_URL, {
+    const response = await fetch(DEV_AI_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${AI_API_KEY}`,
+        Authorization: `Bearer ${DEV_AI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: AI_MODEL,
+        model: DEV_AI_MODEL,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },

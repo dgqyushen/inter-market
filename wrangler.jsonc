@@ -1,0 +1,11 @@
+{
+    "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/schemas/config/wrangler.schema.json",
+    "name": "inter-market",
+    "compatibility_date": "2026-02-05",
+    // 静态资源目录
+    "assets": {
+        "directory": "./dist"
+    },
+    // Pages Functions 配置
+    "pages_build_output_dir": "./dist"
+}

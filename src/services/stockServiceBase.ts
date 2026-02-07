@@ -53,48 +53,6 @@ export interface YahooChartResult {
 }
 
 /**
- * 从环境变量解析基准ETF配置
- */
-export function parseBenchmarkETFs<T extends BenchmarkETF>(
-    envKey: string,
-    defaults: T[]
-): T[] {
-    const envValue = import.meta.env[envKey]
-
-    if (!envValue) {
-        return defaults
-    }
-
-    try {
-        const parsed = JSON.parse(envValue)
-        if (!Array.isArray(parsed)) {
-            console.warn(`${envKey} is not an array, using default`)
-            return defaults
-        }
-
-        const validEtfs = parsed.filter(
-            (item: unknown) =>
-                typeof item === 'object' &&
-                item !== null &&
-                'symbol' in item &&
-                'name' in item &&
-                typeof (item as BenchmarkETF).symbol === 'string' &&
-                typeof (item as BenchmarkETF).name === 'string'
-        )
-
-        if (validEtfs.length === 0) {
-            console.warn(`No valid ETFs found in ${envKey}, using default`)
-            return defaults
-        }
-
-        return validEtfs as T[]
-    } catch {
-        console.warn(`Failed to parse ${envKey}, using default`)
-        return defaults
-    }
-}
-
-/**
  * 根据时间间隔获取适当的数据范围
  */
 export function getAppropriateRange(interval: string): string {
